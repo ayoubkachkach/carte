@@ -8,3 +8,4 @@ skrub==0.1.1
 torch-geometric==2.5.3
 torcheval==0.0.7
 torch_scatter
+lmdb==1.6.2
