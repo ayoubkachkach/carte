@@ -13,6 +13,8 @@ from sklearn.feature_extraction import (
     FeatureHasher,
 )  # Import FeatureHasher from scikit-learn
 from carte_ai.configs.directory import config_directory
+from carte_ai.fasttext import fasttext_disk
+
 
 def _create_edge_index(
     num_nodes: int,
@@ -65,6 +67,7 @@ def _create_edge_index(
 
     return edge_index, edge_attr_
 
+
 class Table2GraphTransformer(TransformerMixin, BaseEstimator):
     """
     Transformer from tables to a list of graphs.
@@ -87,7 +90,7 @@ class Table2GraphTransformer(TransformerMixin, BaseEstimator):
         self,
         *,
         include_edge_attr: bool = True,
-        lm_model: str = "fasttext",
+        lm_model: str | fasttext_disk.FastTextOnDisk = "fasttext",
         n_components: int = 300,
         n_jobs: int = 1,
         fasttext_model_path: str = None,
@@ -95,6 +98,9 @@ class Table2GraphTransformer(TransformerMixin, BaseEstimator):
         super().__init__()
         self.include_edge_attr = include_edge_attr
         self.lm_model = lm_model
+        # Model already provided, store it directly.
+        if isinstance(lm_model, fasttext_disk.FastTextOnDisk):
+            self.lm_model_ = lm_model
         self.n_components = n_components
         self.n_jobs = n_jobs
         self.fasttext_model_path = fasttext_model_path
@@ -190,7 +196,7 @@ class Table2GraphTransformer(TransformerMixin, BaseEstimator):
             #for col in num_cols_exist:
             #    mean = X_numerical[col].mean()
             #    variance = X_numerical[col].var()
-                #print(f"Column: {col}, Mean: {mean:.6f}, Variance: {variance:.6f}")
+            #    print(f"Column: {col}, Mean: {mean:.6f}, Variance: {variance:.6f}")
 
         data_graph = [
             self._graph_construct(
@@ -254,11 +260,10 @@ class Table2GraphTransformer(TransformerMixin, BaseEstimator):
         name_features : np.ndarray
             Transformed features for names.
         """
-        if self.lm_model == "fasttext":
-            return np.array(
-                [self.lm_model_.get_sentence_vector(name) for name in names_total],
-                dtype=np.float32,
-            )
+        return np.array(
+            [self.lm_model_.get_sentence_vector(name) for name in names_total],
+            dtype=np.float32,
+        )
 
     def _graph_construct(self, data_cat, data_num, name_attr_total, name_dict, y, idx):
         """
