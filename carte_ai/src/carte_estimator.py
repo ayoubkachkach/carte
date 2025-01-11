@@ -33,6 +33,8 @@ from tqdm import tqdm
 from scipy.special import softmax
 from carte_ai.src.carte_model import CARTE_NN_Model, CARTE_NN_Model_Ablation
 from carte_ai.configs.directory import config_directory
+import os
+import glob
 
 
 class BaseCARTEEstimator(BaseEstimator):
@@ -177,8 +179,10 @@ class BaseCARTEEstimator(BaseEstimator):
         With each step, it updates the model and the optimizer.
         """
         optimizer.zero_grad()  # Clear gradients.
+        # TODO: only send the data to the device if it is not already there and test if it makes a difference.
         data.to(self.device_)  # Send to device
 
+        # TODO: change import to make this work for CPU or GPU and test if it makes a difference.
         with amp.autocast():  # Enable autocasting
             out = model(data)  # Perform a single forward pass.
             target = data.y  # Set target
@@ -352,35 +356,55 @@ class BaseCARTEEstimator(BaseEstimator):
                 self.valid_loss_flag_ = "neg"
         self.valid_loss_metric_.to(self.device_)
 
-
-    def _load_model(self):
+    def _load_model(self, model_path=None):
         """Load the CARTE model for training.
 
         This loads the pretrained weights if the parameter load_pretrain is set to True.
         The freeze of the pretrained weights are controlled by the freeze_pretrain parameter.
 
+        If model_path is set, we load the model from the specified path.
+
         Returns the model that can be used for training.
         """
-        # Model configuration
-        model_config = dict()
-        model_config["input_dim_x"] = self.X_[0].x.size(1)
-        model_config["input_dim_e"] = self.X_[0].x.size(1)
-        model_config["hidden_dim"] = self.X_[0].x.size(1)
-        model_config["ff_dim"] = self.X_[0].x.size(1)
-        model_config["num_heads"] = 12
-        model_config["num_layers"] = self.num_layers - 1
-        model_config["output_dim"] = self.output_dim_
-        model_config["dropout"] = self.dropout
-
         # Set seed for torch - for reproducibility
         random_state = check_random_state(self.random_state)
         model_seed = random_state.randint(10000)
         torch.manual_seed(model_seed)
 
+        loaded_model_dict = None
+        if model_path:
+            self.device_ = torch.device(self.device)
+            print(self.device)
+            print(self.device_)
+            loaded_model_dict = torch.load(model_path, map_location=self.device_)
+
+        if loaded_model_dict:
+            model_config = loaded_model_dict["model_config"]
+        else:
+            # Model configuration
+            model_config = dict()
+            model_config["input_dim_x"] = self.X_[0].x.size(1)
+            model_config["input_dim_e"] = self.X_[0].x.size(1)
+            model_config["hidden_dim"] = self.X_[0].x.size(1)
+            model_config["ff_dim"] = self.X_[0].x.size(1)
+            model_config["num_heads"] = 12
+            model_config["num_layers"] = self.num_layers - 1
+            model_config["output_dim"] = self.output_dim_
+            model_config["dropout"] = self.dropout
+
         # Set model architecture
         model = CARTE_NN_Model(**model_config)
 
-        # Load the pretrained weights if specified
+        if loaded_model_dict:
+            model.load_state_dict(loaded_model_dict['model_state_dict'], strict=False)
+            model.to(self.device_)
+            self.is_fitted_ = True
+        elif self.load_pretrain and self.pretrained_model_path:
+            # Load the pretrained weights if specified
+            # Load the pretrained weights if specified
+        if self.load_pretrain and self.pretrained_model_path:
+            # Load the pretrained model from the specified path
+            # Load the pretrained weights if specified
         if self.load_pretrain and self.pretrained_model_path:
             # Load the pretrained model from the specified path
             pretrain_model_dict = torch.load(
@@ -405,6 +429,23 @@ class BaseCARTEEstimator(BaseEstimator):
                 param.requires_grad = False
 
         return model
+
+    def save_models(self, base_dir):
+        """Save all ensemble models + metadata i model_list_ to the specified
+            base_dir.
+        """
+        for i, model in enumerate(self.model_list_):
+            model_dict = {
+                'model_config': model.model_config,
+                'model_state_dict': model.state_dict()
+            }
+            torch.save(model_dict, os.path.join(base_dir, f"model_{i}.pt"))
+
+    def load_models(self, base_dir):
+        """Load the models from the specified path."""
+        self.model_list_ = []
+        for model_path in glob.glob(os.path.join(base_dir, "*.pt")):
+            self.model_list_.append(self._load_model(model_path))
 
 
 class CARTERegressor(RegressorMixin, BaseCARTEEstimator):
