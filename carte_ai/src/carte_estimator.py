@@ -402,11 +402,6 @@ class BaseCARTEEstimator(BaseEstimator):
             self.is_fitted_ = True
         elif self.load_pretrain and self.pretrained_model_path:
             # Load the pretrained weights if specified
-            # Load the pretrained weights if specified
-        if self.load_pretrain and self.pretrained_model_path:
-            # Load the pretrained model from the specified path
-            # Load the pretrained weights if specified
-        if self.load_pretrain and self.pretrained_model_path:
             # Load the pretrained model from the specified path
             pretrain_model_dict = torch.load(
                 self.pretrained_model_path, map_location=self.device_
