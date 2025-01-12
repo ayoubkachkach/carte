@@ -141,3 +141,4 @@ scripts/evaluate_singletable_slurm.sh
 *.pyc
 .vscode/
 __cache__/
+*:Zone.Identifier
