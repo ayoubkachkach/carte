@@ -1,6 +1,7 @@
 # Fine-tuning CARTE for lung cancer treatment classification
 
 Ayoub Kachkach
+Github repo: https://github.com/ayoubkachkach/carte
 
 ## Goal
 
