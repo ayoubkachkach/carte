@@ -81,3 +81,23 @@ Conclusion: With this, we reduce the memory footprint of FastText at inference t
 ![alt text](artifacts/peak_memory.png)
 
 ![alt text](artifacts/total_memory.png)
+
+# Long-term improvements
+
+As mentioned earlier, this dataset doesn't seem to be something any model can learn from. However, from my initial interactions with CARTE, it seems like there is a lot of room for improvement.
+
+### **1. A better encoder**
+
+The current FastText model is very primitive, especially compared to current state-of-the-art. It relies on basic embedding lookups. To generate embeddings for a sentence, it averages embeddings for every word. This very naive approach would produce the same embeddings for "Price Weight Ratio" and "Weight Price Ratio" even though the column values represent totally different quantities.
+
+It also doesn't handle words with underscores well. In the lung cancer table, we have col names like "Smoking*Pack_Years" which are treated as a single word by FastText. Since they're out of vocab, it splits them into 5-grams "Smoki", "mokin", "oking", "king*", "ing_P", ... and averages that. It's not only about inference-time but also maximizing learning during pre-training. the YAGO KG that CARTE is pre-trained on also has labels that are camel-case (e.g. "influencedBy") and would suffer from the same issue.
+
+Using something like BERT to pre-train the foundational CARTE model would provide a huge boost in my opinion.
+
+### **2. More pre-training stages with tabular data**
+
+The current CARTE model is pre-trained on a KG alone. This allows the model to understand relations between entities in the world, but not learn from other things specific to tabular data. We could collect a large sample of high quality tabular data and include them in the pre-training regime.
+
+### **3. RAG at inference time**
+
+CARTE support multi-table joins at inference time. This is a very powerful feature but it's not used in the current task. We could pull "similar tables" to queried table from a store of high quality tabular data and include them in the fine-tuning run to maximize transfer.
