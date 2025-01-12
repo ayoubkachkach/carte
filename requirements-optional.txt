@@ -5,3 +5,4 @@ scikit-posthocs==0.9.0
 tabpfn==0.1.10
 xgboost==2.0.3
 category-encoders==2.6.3
+patsy==1.0.1

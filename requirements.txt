@@ -9,3 +9,5 @@ torch-geometric==2.5.3
 torcheval==0.0.7
 torch_scatter
 lmdb==1.6.2
+line_profiler==4.2.0
+memory_profiler==0.61.0
